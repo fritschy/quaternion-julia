@@ -1,0 +1,6 @@
+[submodule "minifb"]
+	path = minifb
+	url = https://github.com/emoon/minifb
+[submodule "glm"]
+	path = glm
+	url = https://github.com/g-truc/glm
