@@ -13,6 +13,8 @@
 #include <ctime>
 #include <vector>
 
+#include <TaskScheduler.h>
+
 #if 0
 #include <glm/gtx/fast_exponential.hpp>
 #include <glm/gtx/fast_square_root.hpp>
@@ -206,7 +208,7 @@ void mainImage(vec3 ro, vec3 ta, float cr, vec4 &fragColor, vec2 fragCoord) {
    fragColor = vec4(col, 1.0f);
 }
 
-void frame(std::vector<uint32_t> *buf, int w, int h) {
+void frame(enki::TaskScheduler *ts, std::vector<uint32_t> *buf, int w, int h) {
    // anim
    float time = iGlobalTime * .15f;
    c = 0.4f * cos(vec4(0.5f, 3.9f, 1.4f, 1.1f) +
@@ -221,6 +223,24 @@ void frame(std::vector<uint32_t> *buf, int w, int h) {
    vec3 ta = vec3(0.0f, 0.0f, 0.0f);
    float cr = 0.1f * cos(0.1f * time);
 
+#define TILE_SIZE 8
+
+#ifdef USE_ENKITS
+   enki::TaskSet t(h, [h, w, ro, ta, cr, buf](enki::TaskSetPartition range, uint32_t) {
+      vec4 fragColor;
+      for (unsigned y = range.start; y < range.end; y++)
+         for (unsigned x = 0; x < w; x++) {
+            mainImage(ro, ta, cr, fragColor, vec2(x, y));
+            fragColor = clamp(fragColor, vec4(0), vec4(1));
+            fragColor *= 255.f;
+            (*buf)[(h - 1 - y) * w + x] = MFB_RGB(
+               uint8_t(fragColor.r), uint8_t(fragColor.g), uint8_t(fragColor.b));
+         }
+   });
+   ts->AddTaskSetToPipe(&t);
+
+   ts->WaitforAll();
+#else
 #ifdef USE_OPENMP
 // http://web.archive.org/web/20160730003601/https://software.intel.com/en-us/articles/openmp-loop-scheduling
 #pragma omp parallel for schedule(dynamic)
@@ -235,6 +255,7 @@ void frame(std::vector<uint32_t> *buf, int w, int h) {
             uint8_t(fragColor.r), uint8_t(fragColor.g), uint8_t(fragColor.b));
       }
    }
+#endif
 }
 
 float seconds() {
@@ -247,8 +268,8 @@ float seconds() {
 
 int main(int argc, char **argv) {
    std::vector<uint32_t> buf;
-   int w = 800;
-   int h = 600;
+   constexpr int w = 800;
+   constexpr int h = 600;
    buf.resize(w * h);
 
    iResolution = vec2(w, h);
@@ -256,16 +277,40 @@ int main(int argc, char **argv) {
    if (!mfb_open("Quaternion Julia", w, h))
       return 1;
 
-   float t_offset = 0;
+   enki::TaskScheduler ts;
+   ts.Initialize();
 
-   t_offset = seconds();
+   std::function<float()> next_time_step = [] {
+      static float t_offset = seconds();
+      return seconds() - t_offset;
+   };
+   std::function<bool()> should_continue = [] {
+      return 1;
+   };
 
-   while (1) {
-      iGlobalTime = seconds() - t_offset;
-      frame(&buf, w, h);
+   // I am a lazy person...
+   if (argv[1]) {
+      next_time_step = [] {
+         static float t;
+         return t += 1;
+      };
+      should_continue = [argv] {
+         static int i;
+         static bool first = true;
+         if (first) {
+            first = false;
+            i = atoi(argv[1]);
+         }
+         return !!i--;
+      };
+   }
+
+   while (should_continue()) {
+      frame(&ts, &buf, w, h);
       int state = mfb_update((uint8_t *)buf.data());
       if (state < 0)
          break;
+      iGlobalTime = next_time_step();
    }
 
    mfb_close();
