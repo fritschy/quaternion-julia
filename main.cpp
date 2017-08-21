@@ -225,9 +225,11 @@ void frame(enki::TaskScheduler *ts, std::vector<uint32_t> *buf, int w, int h) {
 
 #ifdef USE_ENKITS
 #define TILE_SIZE 8
-   enki::TaskSet t(h / TILE_SIZE, [h, w, ro, ta, cr, buf](enki::TaskSetPartition range, uint32_t) {
+   enki::TaskSet t(h / TILE_SIZE + h % TILE_SIZE, [h, w, ro, ta, cr, buf](enki::TaskSetPartition range, uint32_t) {
       vec4 fragColor;
-      for (unsigned y = range.start * TILE_SIZE; y < min(int(h), int(range.end * TILE_SIZE)); y++)
+      for (unsigned y = range.start * TILE_SIZE,
+                    yend = min(int(h), int(range.end * TILE_SIZE));
+                    y < yend; y++)
          for (unsigned x = 0; x < w; x++) {
             mainImage(ro, ta, cr, fragColor, vec2(x, y));
             fragColor = clamp(fragColor, vec4(0), vec4(1));
@@ -242,7 +244,7 @@ void frame(enki::TaskScheduler *ts, std::vector<uint32_t> *buf, int w, int h) {
 #else
 #ifdef USE_OPENMP
 // http://web.archive.org/web/20160730003601/https://software.intel.com/en-us/articles/openmp-loop-scheduling
-#pragma omp parallel for schedule(dynamic)
+#pragma omp parallel for schedule(guided)
 #endif
    for (int y = 0; y < h; y++) {
       for (int x = 0; x < w; x++) {
