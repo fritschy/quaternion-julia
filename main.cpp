@@ -223,12 +223,11 @@ void frame(enki::TaskScheduler *ts, std::vector<uint32_t> *buf, int w, int h) {
    vec3 ta = vec3(0.0f, 0.0f, 0.0f);
    float cr = 0.1f * cos(0.1f * time);
 
-#define TILE_SIZE 8
-
 #ifdef USE_ENKITS
-   enki::TaskSet t(h, [h, w, ro, ta, cr, buf](enki::TaskSetPartition range, uint32_t) {
+#define TILE_SIZE 8
+   enki::TaskSet t(h / TILE_SIZE, [h, w, ro, ta, cr, buf](enki::TaskSetPartition range, uint32_t) {
       vec4 fragColor;
-      for (unsigned y = range.start; y < range.end; y++)
+      for (unsigned y = range.start * TILE_SIZE; y < min(int(h), int(range.end * TILE_SIZE)); y++)
          for (unsigned x = 0; x < w; x++) {
             mainImage(ro, ta, cr, fragColor, vec2(x, y));
             fragColor = clamp(fragColor, vec4(0), vec4(1));
