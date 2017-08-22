@@ -31,6 +31,16 @@ namespace {
 
 namespace approximate {
 /* Approximation of f(x) = log(x)
+ * on interval [ 0.0001, 0.001 ]
+ * with a polynomial of degree 3. */
+float log0001(float x)
+{
+    float u = 4.9237523e+9f;
+    u = u * x + -1.0793186e+7f;
+    u = u * x + 8.9655674e+3f;
+    return u * x + -9.9596303f;
+}
+/* Approximation of f(x) = log(x)
  * on interval [ 0.001, 0.01 ]
  * with a polynomial of degree 3. */
 float log001(float x) {
@@ -224,10 +234,15 @@ float log(float x) {
 #endif
 
    // XXX
+   /* if (unlikely(x < 0.001)) */
+   /*    return glm::log(x); */
+
    if (x < 10) {
       if (x < 1) {
          if (x < 0.1) {
             if (x < 0.01) {
+               if (x < 0.001) // XXX: also does all the logs down to 0... which is not ideal
+                  return log0001(x);
                return log001(x);
             }
             return log01(x);
@@ -271,6 +286,7 @@ float iGlobalTime;
 vec2 iResolution;
 vec4 c;
 
+template <bool calc_trap = true>
 float map(vec3 p, vec4 *oTrap) {
    vec4 z = vec4(p, 0.0f);
    float md2 = 1.0f;
@@ -278,7 +294,7 @@ float map(vec3 p, vec4 *oTrap) {
    vec4 nz;
 
    vec4 trap;
-   if (oTrap)
+   if (calc_trap)
       trap = vec4(abs(z.xyz()), dot(z, z));
 
    for (int i = 0; i < 11; i++) {
@@ -293,11 +309,11 @@ float map(vec3 p, vec4 *oTrap) {
       nz.w = yzw.z;
       z = nz + c;
 
-      if (oTrap)
+      if (calc_trap)
          trap = min(trap, vec4(abs(z.xyz()), dot(z, z)));
 
       mz2 = dot(z, z);
-      if (mz2 > 4.0f) {
+      if (unlikely(mz2 > 4.0f)) {
          break;
       }
    }
@@ -306,7 +322,7 @@ float map(vec3 p, vec4 *oTrap) {
 
    float ret = 0.25f * sqrt(mz2 / md2) * approximate::log(mz2);
 
-   if (oTrap)
+   if (calc_trap)
       *oTrap = trap;
 
    /* if (ret < 10) */
@@ -342,7 +358,7 @@ vec3 calcNormal(vec3 p) {
       nz.w = yzw.z;
       z = nz + c;
 
-      if (dot(z, z) > 4.0f)
+      if (unlikely(dot(z, z) > 4.0f))
          break;
    }
 
@@ -375,7 +391,7 @@ float softshadow(vec3 ro, vec3 rd, float mint, float k) {
    float res = 1.0f;
    float t = mint;
    for (int i = 0; i < 64; i++) {
-      float h = map(ro + rd * t, NULL);
+      float h = map<false>(ro + rd * t, NULL);
       res = min(res, k * h / t);
       if (res < 0.001f)
          break;
