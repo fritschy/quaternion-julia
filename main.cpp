@@ -218,19 +218,45 @@ float log(float x) {
    /* if (x < 8192.0) return log8192(x); */
 
    // XXX
-   if (x < 0.01)
+   /* if (x < 10) { */
+   /*    if (x < 1) { */
+   /*       if (x < 0.1) { */
+   /*          if (x < 0.01) { */
+   /*             return log001(x); */
+   /*          } */
+   /*          return log01(x); */
+   /*       } */
+   /*       return log1(x); */
+   /*    } */
+   /*    return log10(x); */
+   /* } */
+   /* if (x < 1000) { */
+   /*    if (x < 100) */
+   /*       return log100(x); */
+   /*    return log1000(x); */
+   /* } */
+   /* if (x < 10000) */
+   /*    return log10000(x); */
+
+#if 1
+#define unlikely(x) __builtin_expect(x, 0)
+#else
+#define unlikely(x) (x)
+#endif
+
+   if (unlikely(x < 0.01))
       return log001(x);
-   if (x < 0.1)
+   if (unlikely(x < 0.1))
       return log01(x);
-   if (x < 1)
+   if (unlikely(x < 1))
       return log1(x);
-   if (x < 10)
+   if (unlikely(x < 10))
       return log10(x);
-   if (x < 100)
+   if (unlikely(x < 100))
       return log100(x);
-   if (x < 1000)
+   if (unlikely(x < 1000))
       return log1000(x);
-   if (x < 10000)
+   if (unlikely(x < 10000))
       return log10000(x);
 
    return glm::log(x);

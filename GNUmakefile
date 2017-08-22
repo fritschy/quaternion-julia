@@ -5,7 +5,7 @@ CXXFLAGS += -std=c++14 -march=native -O3 -g
 CFLAGS += -march=native -O3 -g
 CC ?= clang
 CXX ?= clang++
-
+OPENMP ?= 1
 FAST ?= 1
 
 ifneq ($(SANITIZER),)
