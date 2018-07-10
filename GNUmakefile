@@ -31,4 +31,4 @@ quaternion-julia: main.o minifb/src/x11/X11MiniFB.o enkiTS/src/TaskScheduler.o
 	$(CXX) $(LDFLAGS) -o $@ $^
 
 clean:
-	rm -f minifb/src/x11/X11MiniFB.o main.o quaternion-julia
+	rm -f minifb/src/x11/X11MiniFB.o main.o quaternion-julia enkiTS/src/TaskScheduler.o
